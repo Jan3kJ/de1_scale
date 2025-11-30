@@ -98,6 +98,7 @@ fn main() -> ! {
 
     let floating_config = InputConfig::default();
 
+    log::info!("setup left scale");
     let dout = Input::new(peripherals.GPIO16, floating_config);
     let pd_sck = Output::new(peripherals.GPIO4, Level::Low, output_config);
     let mut hx = hx711::Hx711::new(delay, dout, pd_sck).unwrap();
@@ -105,22 +106,26 @@ fn main() -> ! {
     log::info!("Interrogating some stuff");
     let enabled = hx.enable();
     if let Ok(()) = enabled {
-        log::info!("EnalbeD");
+        log::info!("Enalbed");
     }
 
     let mut left = Scale::new(&mut hx);
 
+    log::info!("setup right scale");
     let dout = Input::new(peripherals.GPIO18, floating_config);
     let pd_sck = Output::new(peripherals.GPIO5, Level::Low, output_config);
     let mut hx = hx711::Hx711::new(delay, dout, pd_sck).unwrap();
     let mut right = Scale::new(&mut hx);
 
     let mut values: Buffer<4> = Buffer::new();
+    log::info!("enable scales");
     left.enable();
     right.enable();
 
+    log::info!("tare scales");
     left.tare();
     right.tare();
+    log::info!("tare done");
 
 	// perform automatic calibration with a 20 g reference weight
 	let known_weight_g: f32 = 20.0;
