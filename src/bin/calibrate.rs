@@ -79,16 +79,16 @@ fn main() -> ! {
     let now = || time::Instant::now().duration_since_epoch().as_millis();
     esp_println::logger::init_logger_from_env();
     let config = hal::Config::default().with_cpu_clock(CpuClock::max());
-    let mut peripherals = hal::init(config);
+    let peripherals = hal::init(config);
 
-    let rtc = Rtc::new(peripherals.LPWR);
+    let _rtc = Rtc::new(peripherals.LPWR);
     let output_config = OutputConfig::default();
 
     log::info!("Logger is setup");
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0);
 
-    let mut io = Io::new(peripherals.IO_MUX);
+    let _io = Io::new(peripherals.IO_MUX);
     let mut delay = Delay::new();
 
     let mut led = Output::new(peripherals.GPIO2, Level::Low, output_config);
@@ -104,7 +104,7 @@ fn main() -> ! {
     log::info!("Interrogating some stuff");
     let enabled = hx.enable();
     if let Ok(()) = enabled {
-        log::info!("EnalbeD");
+        log::info!("Enalbed");
     }
 
     let mut left = Scale::new(&mut hx);
