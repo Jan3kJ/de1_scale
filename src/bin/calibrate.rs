@@ -17,9 +17,8 @@ use hal::gpio::{Input, InputConfig, Io, Level, Output, OutputConfig, Pull};
 use scale::{Scale, Buffer};
 
 const UPDATE_INTERVAL_MS: u64 = 1000; // 1000 ms = 1 s
-const BASELINE_SAMPLES: usize = 50;
 const DETECT_SAMPLES: usize = 5;
-const STABLE_SAMPLES: usize = 200;
+const STABLE_SAMPLES: usize = 100;
 const DETECT_TIMEOUT_MS: u64 = 30_000; // 30s
 
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -42,7 +41,7 @@ fn avg_reading(scale: &mut Scale, samples: usize, delay: &mut Delay) -> f32 {
 // Calibrate a single scale using a known weight in grams. Returns (raw_per_gram, baseline_raw).
 fn calibrate_scale(scale: &mut Scale, delay: &mut Delay, name: &str, known_g: f32) -> (f32, f32) {
 	println!("Calibrating {name}: measuring baseline (no weight)...");
-	let baseline = avg_reading(scale, BASELINE_SAMPLES, delay);
+	let baseline = avg_reading(scale, DETECT_SAMPLES, delay);
 	println!("{} baseline: {}", name, baseline);
 
 	println!("Place {} g reference on the {name} scale now ({}s timeout)...", known_g, DETECT_TIMEOUT_MS / 1000);
@@ -53,7 +52,7 @@ fn calibrate_scale(scale: &mut Scale, delay: &mut Delay, name: &str, known_g: f3
 		let sample = avg_reading(scale, DETECT_SAMPLES, delay);
 		let delta = (sample - baseline).abs();
 		// adaptive threshold: absolute or relative small baseline
-		let threshold = (baseline.abs() * 0.1) + 6500.0f32; // tweak as needed
+		let threshold = (baseline.abs() * 0.1) + 2000.0f32; // tweak as needed
 		if delta > threshold {
 			detected = true;
 			break;
