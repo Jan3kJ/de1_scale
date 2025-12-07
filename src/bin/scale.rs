@@ -134,19 +134,18 @@ fn main() -> ! {
     let mut wf = |offset: usize, data: &[u8]| {
         log::info!("RECEIVED: Offset {}, data {:x?}", offset, data);
         match data {
-            // CMD TARE
-            [0x03, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x0C] => {
+            // CMD TARE - trigger on any message starting with 0x03, 0x0F
+            [0x03, 0x0F, ..] => {
                 SHOULD_TARE.store(true, Ordering::Relaxed);
                 log::info!("TARE: Triggering tare");
             },
-
             // TIMER ZERO
-            [0x03, 0x0b, 0x02, 0x00, 0x00, 0x00, 0x0a] => {
+            [0x03, 0x0B, 0x02, 0x00, 0x00, 0x00, 0x0A] => {
                 SHOULD_TARE.store(true, Ordering::Relaxed);
                 log::info!("TIMERZERO: Triggering tare because of timer");
             }
             // TIMER STOP
-            [0x03, 0x0b, 0x02, 0x00, 0x00, 0x00, 0x08] => {
+            [0x03, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x08] => {
                 log::info!("TIMERSTOP: Got a timer stop");
             }
 
@@ -156,7 +155,7 @@ fn main() -> ! {
             }
 
             // LED ON
-            [0x03, 0x0A, 0x01, 0x01, 0x00, 0x00, 0x09] => {
+            [0x03, 0x0A, 0x01, 0x01, 0x00, 0x01, 0x08] => {
                 ENABLE_DRIVERS.store(true, Ordering::Relaxed);
                 SHOULD_TARE.store(true, Ordering::Relaxed);
                 log::info!("LEDON: enabling hx711's and taring.");
