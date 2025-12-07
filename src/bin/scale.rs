@@ -43,8 +43,9 @@ const TARE_DEBOUNCE: u64 = 500;
 
 // Calibrated with the drip tray in situ
 // This isn't currently true but should be again soon
-const LEFT_FACTOR: f32 = (901813.0) / 176.9;
-const RIGHT_FACTOR: f32 = (950360.0) / 176.9;
+const SCALE_FACTOR: f32 = 368.0;
+const BUFFER_LENGTH: usize = 8;
+
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
@@ -191,7 +192,7 @@ fn main() -> ! {
 
     let mut srv = AttributeServer::new(&mut ble, &mut gatt_attributes, &mut norng);
 
-    let mut values: Buffer<3> = Buffer::new();
+    let mut values: Buffer<BUFFER_LENGTH> = Buffer::new();
 
     let mut last_tare_press = rtc.current_time_us() * 1000;
 
@@ -252,7 +253,7 @@ fn main() -> ! {
             last = now;
             let l = left.corrected_value();
             let r = right.corrected_value();
-            let w = (l as f32 / LEFT_FACTOR) + (r as f32 / RIGHT_FACTOR);
+            let w = (l as f32 + r as f32) / SCALE_FACTOR;
 
             let av = values.average();
             if av == 0.0 || w < (1.0 + av) * (1.0 + av) * threshold {
