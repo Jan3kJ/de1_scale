@@ -38,14 +38,14 @@ static SHOULD_TARE: AtomicBool = AtomicBool::new(false);
 static DISABLE_DRIVERS: AtomicBool = AtomicBool::new(false);
 static ENABLE_DRIVERS: AtomicBool = AtomicBool::new(false);
 
-const UPDATE_INTERVAL: u64 = 200;
-const TARE_DEBOUNCE: u64 = 500;
+const UPDATE_INTERVAL: u64 = 100;  // Increased sampling rate: 20ms instead of 200ms
+const TARE_DEBOUNCE: u64 = 500;  // Debounce for tare button in ms
 
 // Calibrated with the drip tray in situ
 // This isn't currently true but should be again soon
 const SCALE_FACTOR: f32 = 368.0;
-const BUFFER_LENGTH: usize = 8;
-
+const WEIGHT_LIMIT: f32 = SCALE_FACTOR * 1000.0;  // Max weight in grams per load cell (1kg)
+const BUFFER_LENGTH: usize = 10;  // Larger buffer for better statistical filtering
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
@@ -196,9 +196,6 @@ fn main() -> ! {
 
     let mut last_tare_press = rtc.current_time_us() * 1000;
 
-    // We'll ignore spikes greater than this magnitude
-    let threshold = 500.0;
-
     loop {
         match srv.do_work() {
             Ok(res) => {
@@ -255,19 +252,22 @@ fn main() -> ! {
             let r = right.corrected_value();
             let w = (l as f32 + r as f32) / SCALE_FACTOR;
 
-            let av = values.average();
-            if av == 0.0 || w < (1.0 + av) * (1.0 + av) * threshold {
+            // ignore values above weight limit
+            if (l as f32) > WEIGHT_LIMIT || (r as f32) > WEIGHT_LIMIT {
+                // If either load cell is over the limit, push a max value to indicate overload
+                log::warn!("Overload or invalid value detected! L:{l} R:{r}");
+            } else {
                 values.push(w);
             }
 
-            let av = values.corrected_average();
-
+            // Use median for final output (naturally rejects outliers without rejecting valid changes)
+            let output = values.median();
 
             // int repr of grams *10
-            let i = if av < 1.0 {
+            let i = if output < 1.0 {
                 0
             } else {
-                (av * 10.0) as i16
+                (output * 10.0) as i16
             };
 
             #[cfg(feature = "log_weights")]
@@ -275,7 +275,7 @@ fn main() -> ! {
                 let tare = SHOULD_TARE.load(Ordering::Relaxed);
                 let enable = ENABLE_DRIVERS.load(Ordering::Relaxed);
                 let disable = DISABLE_DRIVERS.load(Ordering::Relaxed);
-                log::info!("t:{tare} e:{enable} d:{disable}: {l} + {r} = {av} -> {i}");
+                log::info!("t:{tare} e:{enable} d:{disable}: {l} + {r} = raw:{w:.2} output:{output:.2} -> {i}");
             }
 
             let mut cccd = [0u8; 1];

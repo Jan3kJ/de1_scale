@@ -25,6 +25,22 @@ impl<const N: usize> Buffer<N> {
         total / ((N - 2) as f32)
     }
 
+    /// Returns the median of the buffer (middle value when sorted).
+    pub fn median(&self) -> f32 {
+        let mut sorted = self.values;
+        // Simple insertion sort (fine for small buffers)
+        for i in 1..N {
+            let key = sorted[i];
+            let mut j = i;
+            while j > 0 && sorted[j - 1] > key {
+                sorted[j] = sorted[j - 1];
+                j -= 1;
+            }
+            sorted[j] = key;
+        }
+        sorted[N / 2]
+    }
+
     pub fn push(&mut self, new: f32) {
         self.values.rotate_right(1);
         self.values[0] = new;
