@@ -264,11 +264,17 @@ fn main() -> ! {
             let output = values.median();
 
             // int repr of grams *10
-            let i = if output < 1.0 {
+            let weight_int = if output < 1.0 {
                 0
             } else {
                 (output * 10.0) as i16
             };
+
+            if weight_int == 0 {
+                // tare if values are negative due to offset
+                left.auto_tare();
+                right.auto_tare();
+            }
 
             #[cfg(feature = "log_weights")]
             {
@@ -285,7 +291,7 @@ fn main() -> ! {
                 &mut cccd,
             ) {
                 let mut payload = [0x03, 0xCE, 0x00, 0x00, 0x00, 0x00, 0x00];
-                payload[2..4].copy_from_slice(&i.to_be_bytes());
+                payload[2..4].copy_from_slice(&weight_int.to_be_bytes());
 
                 // Calculate the xor thingy
                 let mut xor = 0x00;

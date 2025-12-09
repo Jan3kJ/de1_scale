@@ -4,7 +4,7 @@ use embedded_hal::digital::{InputPin, OutputPin};
 
 pub trait ScaleExt {
     fn tare_value(&mut self) -> i32 {
-        const N: i32 = 8;
+        const N: i32 = 16;
         let mut val = 0;
         for _ in 0..N {
             val += self.value();
@@ -60,6 +60,13 @@ impl<'a> Scale<'a> {
 
     pub fn tare(&mut self) {
         self.offset = self.sensor.tare_value()
+    }
+
+    pub fn auto_tare(&mut self) {
+        // tare if value is close to zero and offset is non-zero
+        if self.corrected_value() < 1 && self.offset.abs() > 1 {
+            self.tare();
+        }
     }
 
     pub fn corrected_value(&mut self) -> i32 {
