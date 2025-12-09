@@ -270,10 +270,11 @@ fn main() -> ! {
                 (output * 10.0) as i16
             };
 
-            if weight_int == 0 {
+            if weight_int == 0 && output < -1.0 {
                 // tare if values are negative due to offset
-                left.auto_tare();
-                right.auto_tare();
+                log::info!("Auto-taring because of negative weight");
+                left.tare();
+                right.tare();
             }
 
             #[cfg(feature = "log_weights")]
@@ -281,7 +282,7 @@ fn main() -> ! {
                 let tare = SHOULD_TARE.load(Ordering::Relaxed);
                 let enable = ENABLE_DRIVERS.load(Ordering::Relaxed);
                 let disable = DISABLE_DRIVERS.load(Ordering::Relaxed);
-                log::info!("t:{tare} e:{enable} d:{disable}: {l} + {r} = raw:{w:.2} output:{output:.2} -> {i}");
+                log::info!("t:{tare} e:{enable} d:{disable}: {l} + {r} = raw:{w:.2} output:{output:.2} -> {weight_int}");
             }
 
             let mut cccd = [0u8; 1];

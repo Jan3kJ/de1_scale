@@ -62,13 +62,6 @@ impl<'a> Scale<'a> {
         self.offset = self.sensor.tare_value()
     }
 
-    pub fn auto_tare(&mut self) {
-        // tare if value is close to zero and offset is non-zero
-        if self.corrected_value() < 1 && self.offset.abs() > 1 {
-            self.tare();
-        }
-    }
-
     pub fn corrected_value(&mut self) -> i32 {
         self.sensor.value() - self.offset
     }
