@@ -45,7 +45,7 @@ const TARE_DEBOUNCE: u64 = 500;  // Debounce for tare button in ms
 // This isn't currently true but should be again soon
 const SCALE_FACTOR: f32 = 368.0;
 const WEIGHT_LIMIT: f32 = SCALE_FACTOR * 1000.0;  // Max weight in grams per load cell (1kg)
-const BUFFER_LENGTH: usize = 10;  // Larger buffer for better statistical filtering
+const BUFFER_LENGTH: usize = 5;  // Larger buffer for better statistical filtering
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
@@ -193,6 +193,7 @@ fn main() -> ! {
     let mut srv = AttributeServer::new(&mut ble, &mut gatt_attributes, &mut norng);
 
     let mut values: Buffer<BUFFER_LENGTH> = Buffer::new();
+    let mut values_avg: Buffer<BUFFER_LENGTH> = Buffer::new();
 
     let mut last_tare_press = rtc.current_time_us() * 1000;
 
@@ -235,6 +236,7 @@ fn main() -> ! {
                 right.tare();
                 // Fill the values buffer back up with zeros;
                 values.zero();
+                values_avg.zero();
             }
             SHOULD_TARE.store(false, Ordering::Relaxed);
         }
@@ -246,7 +248,8 @@ fn main() -> ! {
             right.tare();
             last_tare_press = now;
 
-            values.zero()
+            values.zero();
+            values_avg.zero();
         }
 
         let now = rtc.current_time_us() * 1000;
@@ -273,13 +276,17 @@ fn main() -> ! {
             } else {
                 (output * 10.0) as i16
             };
-
+            
+            values_avg.push(weight_int as f32);
+            let weight_output = values_avg.average() as i16;
+            
             if weight_int == 0 && output < -1.0 {
                 // tare if values are negative due to offset
                 log::info!("Auto-taring because of negative weight");
                 left.tare();
                 right.tare();
                 values.zero();
+                values_avg.zero();
             }
 
             #[cfg(feature = "log_weights")]
@@ -287,7 +294,7 @@ fn main() -> ! {
                 let tare = SHOULD_TARE.load(Ordering::Relaxed);
                 let enable = ENABLE_DRIVERS.load(Ordering::Relaxed);
                 let disable = DISABLE_DRIVERS.load(Ordering::Relaxed);
-                log::info!("t:{tare} e:{enable} d:{disable}: {l} + {r} = raw:{w:.2} output:{output:.2} -> {weight_int}");
+                log::info!("t:{tare} e:{enable} d:{disable}: {l} + {r} = raw:{w:.2} output:{output:.2} -> {weight_output}");
             }
 
             let mut cccd = [0u8; 1];
@@ -297,7 +304,7 @@ fn main() -> ! {
                 &mut cccd,
             ) {
                 let mut payload = [0x03, 0xCE, 0x00, 0x00, 0x00, 0x00, 0x00];
-                payload[2..4].copy_from_slice(&weight_int.to_be_bytes());
+                payload[2..4].copy_from_slice(&weight_output.to_be_bytes());
 
                 // Calculate the xor thingy
                 let mut xor = 0x00;
