@@ -38,7 +38,7 @@ static SHOULD_TARE: AtomicBool = AtomicBool::new(false);
 static DISABLE_DRIVERS: AtomicBool = AtomicBool::new(false);
 static ENABLE_DRIVERS: AtomicBool = AtomicBool::new(false);
 
-const UPDATE_INTERVAL: u64 = 100;  // Increased sampling rate: 20ms instead of 200ms
+const UPDATE_INTERVAL: u64 = 100;  // Increased sampling rate: 100ms
 const TARE_DEBOUNCE: u64 = 500;  // Debounce for tare button in ms
 
 // Calibrated with the drip tray in situ
@@ -225,13 +225,17 @@ fn main() -> ! {
             let _ = right.disable();
             DISABLE_DRIVERS.store(false, Ordering::Relaxed);
         }
-
+        
         if SHOULD_TARE.load(Ordering::Relaxed) {
-            log::info!("Taring");
-            left.tare();
-            right.tare();
-            // Fill the values buffer back up with zeros;
-            values.zero();
+            if values.median().abs() < 1.0 {
+                log::info!("Skip tare because weight is near zero");
+            } else {
+                log::info!("Taring");
+                left.tare();
+                right.tare();
+                // Fill the values buffer back up with zeros;
+                values.zero();
+            }
             SHOULD_TARE.store(false, Ordering::Relaxed);
         }
 
@@ -275,6 +279,7 @@ fn main() -> ! {
                 log::info!("Auto-taring because of negative weight");
                 left.tare();
                 right.tare();
+                values.zero();
             }
 
             #[cfg(feature = "log_weights")]

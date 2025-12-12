@@ -4,7 +4,7 @@ use embedded_hal::digital::{InputPin, OutputPin};
 
 pub trait ScaleExt {
     fn tare_value(&mut self) -> i32 {
-        const N: i32 = 16;
+        const N: i32 = 8;
         let mut val = 0;
         for _ in 0..N {
             val += self.value();
